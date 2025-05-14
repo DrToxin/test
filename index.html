@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Слайдер с зумом и перетаскиванием</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    .slider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .images {
+      display: flex;
+      gap: 20px;
+    }
+
+    .image-container {
+      width: 45vw;
+      height: 80vh;
+      overflow: hidden;
+      border: 1px solid #ccc;
+      position: relative;
+      cursor: grab;
+    }
+
+    .image-container:active {
+      cursor: grabbing;
+    }
+
+    .image-container img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transform-origin: center center;
+      transition: transform 0.05s ease;
+    }
+
+    button {
+      font-size: 24px;
+      padding: 10px 20px;
+      margin: 0 20px;
+      cursor: pointer;
+    }
+
+    .counter {
+      margin-top: 10px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="slider">
+    <button id="prev">&#8592;</button>
+    <div class="images">
+      <div class="image-container" id="container1">
+        <img id="img1" src="kuu12-01.png" alt="kuu12" />
+      </div>
+      <div class="image-container" id="container2">
+        <img id="img2" src="map-01.png" alt="map" />
+      </div>
+    </div>
+    <button id="next">&#8594;</button>
+  </div>
+  <div class="counter" id="counter">Слайд 1 из 12</div>
+
+  <script>
+  const totalSlides = 12;
+  let currentSlide = 1;
+
+  const img1 = document.getElementById("img1");
+  const img2 = document.getElementById("img2");
+  const counter = document.getElementById("counter");
+
+  const zoomState = {
+    img1: { scale: 1, x: 0, y: 0 },
+    img2: { scale: 1, x: 0, y: 0 }
+  };
+
+  function updateImages() {
+    const numStr = currentSlide.toString().padStart(2, '0');
+    img1.src = `kuu12-${numStr}.png`;
+    img2.src = `map-${numStr}.png`;
+
+    for (const key of ["img1", "img2"]) {
+      zoomState[key] = { scale: 1, x: 0, y: 0 };
+      applyTransform(document.getElementById(key), zoomState[key]);
+    }
+
+    counter.textContent = `Слайд ${currentSlide} из ${totalSlides}`;
+  }
+
+  function applyTransform(img, state) {
+    img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+  }
+
+  function setupZoomAndPan(img, key) {
+    const container = img.parentElement;
+    let isDragging = false;
+    let startX = 0, startY = 0;
+
+    // Зум колесом
+    container.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const rect = img.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const offsetY = e.clientY - rect.top;
+
+      let state = zoomState[key];
+      let newScale = state.scale * (e.deltaY < 0 ? 1.1 : 0.9);
+      newScale = Math.max(1, Math.min(5, newScale));
+
+      const scaleRatio = newScale / state.scale;
+      state.x -= (offsetX - state.x) * (scaleRatio - 1);
+      state.y -= (offsetY - state.y) * (scaleRatio - 1);
+      state.scale = newScale;
+
+      applyTransform(img, state);
+    });
+
+    // Перетаскивание
+    container.addEventListener("mousedown", (e) => {
+      if (zoomState[key].scale === 1) return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      container.style.cursor = "grabbing";
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const state = zoomState[key];
+      state.x += dx;
+      state.y += dy;
+
+      applyTransform(img, state);
+    });
+
+    window.addEventListener("mouseup", () => {
+      isDragging = false;
+      container.style.cursor = zoomState[key].scale > 1 ? "grab" : "default";
+    });
+
+    container.addEventListener("mouseleave", () => {
+      if (isDragging) {
+        isDragging = false;
+        container.style.cursor = "grab";
+      }
+    });
+  }
+
+  setupZoomAndPan(img1, "img1");
+  setupZoomAndPan(img2, "img2");
+
+  document.getElementById("prev").addEventListener("click", () => {
+    currentSlide = currentSlide === 1 ? totalSlides : currentSlide - 1;
+    updateImages();
+  });
+
+  document.getElementById("next").addEventListener("click", () => {
+    currentSlide = currentSlide === totalSlides ? 1 : currentSlide + 1;
+    updateImages();
+  });
+</script>
+
+</body>
+</html>
